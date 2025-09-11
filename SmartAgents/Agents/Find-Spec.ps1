@@ -6,7 +6,6 @@
 function Start-FindSpecAgent {
     [CmdletBinding()]
     param(
-        # --- ИСПРАВЛЕНО: Модель по умолчанию теперь 'flash', как вы указали. ---
         [ValidateSet('gemini-2.5-pro', 'gemini-2.5-flash')]
         [string]$Model = 'gemini-2.5-flash',
         [string]$ApiKey
@@ -25,7 +24,7 @@ function Start-FindSpecAgent {
         }
     }
 
-    # --- ИСПРАВЛЕНО: Восстановлено читаемое форматирование ---
+    
     function Show-History {
         param([string]$HistoryFilePath)
         if (-not (Test-Path $HistoryFilePath)) {
@@ -43,7 +42,7 @@ function Start-FindSpecAgent {
         }
     }
 
-    # --- ИСПРАВЛЕНО: Восстановлено читаемое форматирование ---
+    
     function Clear-History {
         param([string]$HistoryFilePath)
         if (Test-Path $HistoryFilePath) {
@@ -52,7 +51,7 @@ function Start-FindSpecAgent {
         Write-ColoredMessage "История сессии очищена." -Color $Config.Color.Warning
     }
     
-    # --- ИСПРАВЛЕНО: Восстановлено читаемое форматирование ---
+    
     function Command-Handler-Spec {
         param([string]$Command, [string]$HistoryFilePath)
         switch ($Command.Trim().ToLower()) {
