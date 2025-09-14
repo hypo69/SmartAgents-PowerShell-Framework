@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "powershell": {
+      "command": "pwsh",
+      "args": [
+        "-File",
+        "./mcp-powershell-server/mcp-powershell-stdio.ps1"
+      ],
+      "env": {
+        "POWERSHELL_EXECUTION_POLICY": "RemoteSigned"
+      }
+    }
+  },
+
+  "github": {
+    "command": "npx",
+    "args": [ "-y", "@modelcontextprotocol/server-github" ],
+    "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" }
+  }
+
+} } }
