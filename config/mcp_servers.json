@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "powershell": {
+      "command": "pwsh",
+      "env": {
+        "POWERSHELL_EXECUTION_POLICY": "RemoteSigned"
+      },
+      "args": [
+        "-File",
+        "C:\\powershell\\modules\\SmartAgents-PowerShell-Framework\\mcp-powershell-server\\mcp-powershell-stdio.ps1"
+      ]
+    }
+  }
+}

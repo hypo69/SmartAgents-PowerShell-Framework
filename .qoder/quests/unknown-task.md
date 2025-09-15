@@ -616,6 +616,610 @@ function Test-MCPSupport {
 }
 ```
 
+## Deployment & Execution Procedures
+
+### Prerequisites Verification
+Before running Find-Spec agent, ensure all system requirements are met:
+
+```powershell
+# Check PowerShell version
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    Write-Error "PowerShell 7+ required. Current: $($PSVersionTable.PSVersion)"
+    exit 1
+}
+
+# Verify Gemini CLI installation
+try {
+    $geminiVersion = & gemini --version 2>&1
+    Write-Host "✓ Gemini CLI found: $geminiVersion" -ForegroundColor Green
+} catch {
+    Write-Error "Gemini CLI not found. Install from: https://github.com/google/generative-ai-cli"
+    exit 1
+}
+
+# Check ConsoleGuiTools module
+try {
+    Get-Command Out-ConsoleGridView -ErrorAction Stop | Out-Null
+    Write-Host "✓ Microsoft.PowerShell.ConsoleGuiTools available" -ForegroundColor Green
+} catch {
+    Write-Warning "Installing Microsoft.PowerShell.ConsoleGuiTools..."
+    Install-Module Microsoft.PowerShell.ConsoleGuiTools -Force
+}
+```
+
+### Terminal Execution Methods
+
+#### Method 1: Direct Script Execution
+```powershell
+# Navigate to project directory
+cd "c:\powershell\modules\SmartAgents-PowerShell-Framework"
+
+# Set API key for current session
+$env:GEMINI_API_KEY = "AIzaSyBUgSKa6hcsmxzRVv16L2zNJiOoFBDJNO8"
+
+# Execute Find-Spec agent directly
+.\SmartAgents\Agents\Find-Spec.ps1
+```
+
+#### Method 2: Module Import and Function Call
+```powershell
+# Navigate to SmartAgents directory
+cd "c:\powershell\modules\SmartAgents-PowerShell-Framework\SmartAgents"
+
+# Import the module
+Import-Module .\SmartAgents.psd1 -Force
+
+# Run with API key parameter
+Start-FindSpecAgent -ApiKey "AIzaSyBUgSKa6hcsmxzRVv16L2zNJiOoFBDJNO8"
+
+# Alternative: Use alias
+find-spec -Key "AIzaSyBUgSKa6hcsmxzRVv16L2zNJiOoFBDJNO8"
+```
+
+#### Method 3: Installation Script Approach
+```powershell
+# Run installation with API key
+cd "c:\powershell\modules\SmartAgents-PowerShell-Framework\SmartAgents"
+.\install.ps1 -ApiKey "AIzaSyBUgSKa6hcsmxzRVv16L2zNJiOoFBDJNO8"
+
+# Import module after installation
+Import-Module .\SmartAgents.psd1
+
+# Execute agent
+Start-FindSpecAgent
+```
+
+### Syntax Error Detection and Resolution
+
+#### Critical Syntax Issues Identified
+
+**Error 1: Missing Closing Brace for Main Function**
+- **Location**: Find-Spec.ps1, function Start-FindSpecAgent
+- **Problem**: Main function missing closing `}` brace
+- **Detection**: PowerShell parser error "Missing closing '}' in statement block"
+- **Resolution**: Add missing closing brace at end of function
+
+**Error 2: Unicode Character Issues**
+- **Location**: Line 256 and 299
+- **Problem**: Unicode emoji characters causing parsing issues
+- **Detection**: "Unexpected token ')' in expression" errors
+- **Resolution**: Properly escape unicode characters or use ASCII alternatives
+
+**Error 3: String Termination Issues**
+- **Location**: Line 299
+- **Problem**: String missing terminator quote
+- **Detection**: "The string is missing the terminator" error
+- **Resolution**: Ensure all strings have proper opening and closing quotes
+
+#### Syntax Validation Framework
+```powershell
+function Test-PowerShellSyntax {
+    param([string]$FilePath)
+    
+    try {
+        # Use PowerShell parser to validate syntax
+        $tokens = $null
+        $errors = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+            $FilePath, [ref]$tokens, [ref]$errors
+        )
+        
+        if ($errors.Count -gt 0) {
+            Write-Host "Syntax errors found in $FilePath:" -ForegroundColor Red
+            foreach ($error in $errors) {
+                Write-Host "  Line $($error.Extent.StartLineNumber): $($error.Message)" -ForegroundColor Yellow
+            }
+            return $false
+        }
+        
+        Write-Host "✓ Syntax validation passed for $FilePath" -ForegroundColor Green
+        return $true
+    } catch {
+        Write-Error "Failed to parse file $FilePath: $($_.Exception.Message)"
+        return $false
+    }
+}
+```
+
+#### Specific Fix for Find-Spec.ps1
+```powershell
+# Add this function to validate and fix syntax issues
+function Repair-FindSpecSyntax {
+    param([string]$FilePath)
+    
+    $content = Get-Content -Path $FilePath -Raw
+    $fixedContent = $content
+    
+    # Fix 1: Ensure proper function closure
+    if (-not ($content -match '(?s)function Start-FindSpecAgent \{.*?\n\}\s*$')) {
+        Write-Host "Adding missing closing brace for Start-FindSpecAgent function" -ForegroundColor Yellow
+        if (-not $content.TrimEnd().EndsWith('}')) {
+            $fixedContent = $content.TrimEnd() + "`n}"
+        }
+    }
+    
+    # Fix 2: Handle Unicode emoji issues
+    $emojiPattern = '[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]'
+    if ($fixedContent -match $emojiPattern) {
+        Write-Host "Replacing problematic Unicode characters" -ForegroundColor Yellow
+        $fixedContent = $fixedContent -replace '👋', '(wave)'
+        $fixedContent = $fixedContent -replace '🔍', '[SEARCH]'
+    }
+    
+    # Fix 3: Ensure proper string termination
+    $lines = $fixedContent -split '\r?\n'
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i]
+        # Check for unterminated strings
+        $quoteCount = ($line.ToCharArray() | Where-Object { $_ -eq '"' }).Count
+        if ($quoteCount % 2 -ne 0 -and $line -notmatch '#.*"') {
+            Write-Host "Fixing unterminated string on line $($i + 1)" -ForegroundColor Yellow
+            $lines[$i] = $line + '"'
+        }
+    }
+    $fixedContent = $lines -join "`n"
+    
+    # Backup original and save fixed version
+    Copy-Item -Path $FilePath -Destination "$FilePath.backup" -Force
+    Set-Content -Path $FilePath -Value $fixedContent -Encoding UTF8
+    
+    Write-Host "✓ Syntax fixes applied to $FilePath" -ForegroundColor Green
+    Write-Host "  Original backed up to $FilePath.backup" -ForegroundColor Gray
+}
+```
+
+#### Automated Syntax Repair Workflow
+```powershell
+function Repair-AgentSyntax {
+    param([string]$AgentDirectory)
+    
+    $agentFiles = Get-ChildItem -Path $AgentDirectory -Filter "*.ps1" -Recurse
+    $repairResults = @()
+    
+    foreach ($file in $agentFiles) {
+        Write-Host "Checking syntax for $($file.Name)..." -ForegroundColor Cyan
+        
+        $beforeValid = Test-PowerShellSyntax -FilePath $file.FullName
+        
+        if (-not $beforeValid) {
+            Write-Host "Attempting to repair $($file.Name)..." -ForegroundColor Yellow
+            Repair-FindSpecSyntax -FilePath $file.FullName
+            
+            $afterValid = Test-PowerShellSyntax -FilePath $file.FullName
+            
+            $repairResults += @{
+                File = $file.Name
+                BeforeRepair = $beforeValid
+                AfterRepair = $afterValid
+                Status = if ($afterValid) { "Fixed" } else { "Failed" }
+            }
+        } else {
+            $repairResults += @{
+                File = $file.Name
+                BeforeRepair = $beforeValid
+                AfterRepair = $beforeValid
+                Status = "No repair needed"
+            }
+        }
+    }
+    
+    # Display repair summary
+    Write-Host "`nSyntax Repair Summary:" -ForegroundColor Green
+    $repairResults | ForEach-Object {
+        $status = $_["Status"]
+        $color = switch ($status) {
+            "Fixed" { "Green" }
+            "Failed" { "Red" }
+            "No repair needed" { "Gray" }
+        }
+        Write-Host "  $($_["File"]): $status" -ForegroundColor $color
+    }
+    
+    return $repairResults
+}
+```
+
+### Pre-Execution Syntax Validation
+
+#### Module Loading with Syntax Check
+```powershell
+function Import-SmartAgentsModule {
+    param(
+        [string]$ModulePath,
+        [switch]$AutoRepair
+    )
+    
+    $moduleFile = Join-Path $ModulePath "SmartAgents.psd1"
+    $agentsPath = Join-Path $ModulePath "Agents"
+    
+    # Validate module manifest
+    try {
+        Test-ModuleManifest -Path $moduleFile -ErrorAction Stop
+        Write-Host "✓ Module manifest validation passed" -ForegroundColor Green
+    } catch {
+        Write-Error "Module manifest validation failed: $($_.Exception.Message)"
+        return $false
+    }
+    
+    # Validate agent scripts syntax
+    $syntaxIssues = @()
+    $agentFiles = Get-ChildItem -Path $agentsPath -Filter "*.ps1" -Recurse -ErrorAction SilentlyContinue
+    
+    foreach ($file in $agentFiles) {
+        if (-not (Test-PowerShellSyntax -FilePath $file.FullName)) {
+            $syntaxIssues += $file.FullName
+        }
+    }
+    
+    if ($syntaxIssues.Count -gt 0) {
+        Write-Host "Syntax issues found in agent files:" -ForegroundColor Red
+        $syntaxIssues | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+        
+        if ($AutoRepair) {
+            Write-Host "Attempting automatic repair..." -ForegroundColor Cyan
+            $repairResults = Repair-AgentSyntax -AgentDirectory $agentsPath
+            
+            # Re-check after repair
+            $remainingIssues = $repairResults | Where-Object { $_["Status"] -eq "Failed" }
+            if ($remainingIssues.Count -gt 0) {
+                Write-Error "Failed to repair all syntax issues. Manual intervention required."
+                return $false
+            }
+        } else {
+            Write-Host "Use -AutoRepair switch to attempt automatic fixes" -ForegroundColor Cyan
+            return $false
+        }
+    }
+    
+    # Import module if syntax validation passed
+    try {
+        Import-Module $moduleFile -Force
+        Write-Host "✓ SmartAgents module imported successfully" -ForegroundColor Green
+        return $true
+    } catch {
+        Write-Error "Failed to import module: $($_.Exception.Message)"
+        return $false
+    }
+}
+```
+
+#### Safe Module Import Command
+```powershell
+# Use this command instead of direct Import-Module
+Import-SmartAgentsModule -ModulePath ".\" -AutoRepair
+```
+
+#### Quick Fix Commands for Current Errors
+
+**Step 1: Fix Missing Closing Brace**
+```powershell
+# Navigate to the problematic file
+$filePath = "C:\powershell\modules\SmartAgents-PowerShell-Framework\SmartAgents\Agents\Find-Spec.ps1"
+
+# Read the current content
+$content = Get-Content -Path $filePath -Raw
+
+# Add missing closing brace if not present
+if (-not $content.TrimEnd().EndsWith('}')) {
+    $fixedContent = $content.TrimEnd() + "`n}"
+    
+    # Backup original
+    Copy-Item -Path $filePath -Destination "$filePath.backup"
+    
+    # Save fixed version
+    Set-Content -Path $filePath -Value $fixedContent -Encoding UTF8
+    Write-Host "Fixed missing closing brace in Find-Spec.ps1" -ForegroundColor Green
+}
+```
+
+**Step 2: Fix Unicode Character Issues**
+```powershell
+# Fix emoji characters that cause parsing issues
+$content = Get-Content -Path $filePath -Raw
+$fixedContent = $content -replace '👋', '(wave)' -replace '🔍', '[SEARCH]'
+
+# Handle problematic unicode in string literals
+$fixedContent = $fixedContent -replace '"👋"', '"(wave)"'
+$fixedContent = $fixedContent -replace '"🔍"', '"[SEARCH]"'
+
+# Save fixed version
+Set-Content -Path $filePath -Value $fixedContent -Encoding UTF8
+Write-Host "Fixed Unicode character issues" -ForegroundColor Green
+```
+
+**Step 3: Validate Syntax After Fixes**
+```powershell
+# Test the syntax using PowerShell parser
+try {
+    $tokens = $null
+    $errors = $null
+    [System.Management.Automation.Language.Parser]::ParseFile(
+        $filePath, [ref]$tokens, [ref]$errors
+    ) | Out-Null
+    
+    if ($errors.Count -eq 0) {
+        Write-Host "✓ Syntax validation passed!" -ForegroundColor Green
+    } else {
+        Write-Host "Remaining syntax errors:" -ForegroundColor Red
+        $errors | ForEach-Object {
+            Write-Host "  Line $($_.Extent.StartLineNumber): $($_.Message)" -ForegroundColor Yellow
+        }
+    }
+} catch {
+    Write-Error "Failed to validate syntax: $($_.Exception.Message)"
+}
+```
+
+**Step 4: Safe Module Import**
+```powershell
+# Remove any existing module instances
+Remove-Module SmartAgents -ErrorAction SilentlyContinue
+
+# Import with error handling
+try {
+    Import-Module ".\SmartAgents.psd1" -Force
+    Write-Host "✓ Module imported successfully!" -ForegroundColor Green
+    
+    # Test agent function availability
+    if (Get-Command Start-FindSpecAgent -ErrorAction SilentlyContinue) {
+        Write-Host "✓ Start-FindSpecAgent function available" -ForegroundColor Green
+    } else {
+        Write-Warning "Start-FindSpecAgent function not found"
+    }
+} catch {
+    Write-Error "Module import failed: $($_.Exception.Message)"
+}
+```
+
+**Complete Fix Script**
+```powershell
+# Complete automated fix for Find-Spec.ps1 syntax errors
+function Fix-FindSpecSyntaxErrors {
+    $filePath = "C:\powershell\modules\SmartAgents-PowerShell-Framework\SmartAgents\Agents\Find-Spec.ps1"
+    
+    if (-not (Test-Path $filePath)) {
+        Write-Error "Find-Spec.ps1 not found at $filePath"
+        return
+    }
+    
+    Write-Host "Backing up original file..." -ForegroundColor Cyan
+    Copy-Item -Path $filePath -Destination "$filePath.backup.$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    
+    Write-Host "Reading file content..." -ForegroundColor Cyan
+    $content = Get-Content -Path $filePath -Raw
+    
+    Write-Host "Applying fixes..." -ForegroundColor Cyan
+    
+    # Fix 1: Add missing closing brace
+    if (-not $content.TrimEnd().EndsWith('}')) {
+        $content = $content.TrimEnd() + "`n}"
+        Write-Host "  ✓ Added missing closing brace" -ForegroundColor Green
+    }
+    
+    # Fix 2: Replace problematic Unicode characters
+    $originalLength = $content.Length
+    $content = $content -replace '👋', '(wave)'
+    $content = $content -replace '🔍', '[SEARCH]'
+    if ($content.Length -ne $originalLength) {
+        Write-Host "  ✓ Fixed Unicode character issues" -ForegroundColor Green
+    }
+    
+    # Fix 3: Check for unterminated strings
+    $lines = $content -split '\r?\n'
+    $lineNumber = 0
+    $stringFixed = $false
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i]
+        $lineNumber = $i + 1
+        
+        # Simple check for unterminated strings (basic heuristic)
+        if ($line -match '"[^"]*$' -and $line -notmatch '#.*"[^"]*$') {
+            $lines[$i] = $line + '"'
+            Write-Host "  ✓ Fixed unterminated string on line $lineNumber" -ForegroundColor Green
+            $stringFixed = $true
+        }
+    }
+    
+    if ($stringFixed) {
+        $content = $lines -join "`n"
+    }
+    
+    Write-Host "Saving fixed content..." -ForegroundColor Cyan
+    Set-Content -Path $filePath -Value $content -Encoding UTF8
+    
+    Write-Host "Validating syntax..." -ForegroundColor Cyan
+    try {
+        $tokens = $null
+        $errors = $null
+        [System.Management.Automation.Language.Parser]::ParseFile(
+            $filePath, [ref]$tokens, [ref]$errors
+        ) | Out-Null
+        
+        if ($errors.Count -eq 0) {
+            Write-Host "✓ All syntax errors fixed successfully!" -ForegroundColor Green
+            return $true
+        } else {
+            Write-Host "Remaining syntax errors:" -ForegroundColor Red
+            $errors | ForEach-Object {
+                Write-Host "  Line $($_.Extent.StartLineNumber): $($_.Message)" -ForegroundColor Yellow
+            }
+            return $false
+        }
+    } catch {
+        Write-Error "Syntax validation failed: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+# Execute the fix
+Fix-FindSpecSyntaxErrors
+```
+
+### Execution Troubleshooting
+
+#### Common Execution Issues
+
+**Issue 1: Execution Policy Restriction**
+```powershell
+# Check current execution policy
+Get-ExecutionPolicy
+
+# If Restricted, set to RemoteSigned for current session
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+```
+
+**Issue 2: Module Not Found**
+```powershell
+# Add module path if needed
+$env:PSModulePath += ";c:\powershell\modules\SmartAgents-PowerShell-Framework"
+
+# Force reload module
+Remove-Module SmartAgents -ErrorAction SilentlyContinue
+Import-Module .\SmartAgents.psd1 -Force
+```
+
+**Issue 3: API Key Environment Variable**
+```powershell
+# Verify API key is set
+if ([string]::IsNullOrEmpty($env:GEMINI_API_KEY)) {
+    $env:GEMINI_API_KEY = "AIzaSyBUgSKa6hcsmxzRVv16L2zNJiOoFBDJNO8"
+    Write-Host "API key set for current session" -ForegroundColor Green
+}
+```
+
+### Step-by-Step Execution Guide
+
+#### Terminal Session Workflow
+```mermaid
+flowchart TD
+    A[Open PowerShell Terminal] --> B[Navigate to Project Directory]
+    B --> C[Set Execution Policy if Needed]
+    C --> D[Set API Key Environment Variable]
+    D --> E[Choose Execution Method]
+    E --> F{Method 1: Direct Script?}
+    E --> G{Method 2: Module Import?}
+    E --> H{Method 3: Installation Script?}
+    F -->|Yes| I[Execute .\SmartAgents\Agents\Find-Spec.ps1]
+    G -->|Yes| J[Import-Module, then Start-FindSpecAgent]
+    H -->|Yes| K[Run install.ps1, then Start-FindSpecAgent]
+    I --> L[Agent Starts Successfully]
+    J --> L
+    K --> L
+    L --> M[Interactive Session Active]
+    M --> N[Enter Queries or Commands]
+    N --> O[Type 'exit' to Quit]
+```
+
+### Command-Line Parameters
+
+#### Start-FindSpecAgent Parameters
+```powershell
+Start-FindSpecAgent [
+    [-Model] <String> {gemini-2.5-pro | gemini-2.5-flash}
+    [-ApiKey] <String>
+    [-K] <String>     # Alias for ApiKey
+]
+```
+
+**Examples:**
+```powershell
+# Default model with API key
+Start-FindSpecAgent -ApiKey "YOUR_API_KEY"
+
+# Specific model selection
+Start-FindSpecAgent -Model "gemini-2.5-pro" -Key "YOUR_API_KEY"
+
+# Using environment variable (no parameters needed)
+$env:GEMINI_API_KEY = "YOUR_API_KEY"
+Start-FindSpecAgent
+```
+
+### Debug Mode Execution
+
+#### Enhanced Logging
+```powershell
+# Enable verbose output
+$VerbosePreference = "Continue"
+Start-FindSpecAgent -Verbose
+
+# Enable debug output
+$DebugPreference = "Continue"
+Start-FindSpecAgent -Debug
+
+# Combine with error action
+Start-FindSpecAgent -ErrorAction Stop
+```
+
+#### Error Logging
+```powershell
+# Redirect errors to file
+Start-FindSpecAgent 2>"error.log"
+
+# Capture all output
+Start-FindSpecAgent *>"full_output.log"
+
+# Transcript logging
+Start-Transcript -Path "find_spec_session.log"
+Start-FindSpecAgent
+Stop-Transcript
+```
+
+### Session Management
+
+#### Interactive Commands Available
+- `?` or `help` - Show agent help
+- `history` - Display session history
+- `clear` - Clear session history
+- `key` - Show API key information
+- `exit` or `quit` - Exit agent
+
+#### Session Files Location
+```
+SmartAgents/Agents/FindSpec/.gemini/
+├── .chat_history/          # Session history files
+│   └── spec_session_*.jsonl
+├── GEMINI.md              # System instructions
+├── ShowHelp.md            # User help content
+└── settings.json          # Configuration
+```
+
+### Performance Monitoring
+
+#### Execution Metrics
+```powershell
+# Measure execution time
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+Start-FindSpecAgent
+$stopwatch.Stop()
+Write-Host "Execution time: $($stopwatch.Elapsed)"
+
+# Monitor memory usage
+$beforeMemory = [GC]::GetTotalMemory($false)
+Start-FindSpecAgent
+$afterMemory = [GC]::GetTotalMemory($true)
+Write-Host "Memory used: $([math]::Round(($afterMemory - $beforeMemory) / 1MB, 2)) MB"
+```
+
 ## Testing Strategy
 
 ### Unit Testing Approach

@@ -1,0 +1,11 @@
+{
+  "Model": "gemini-2.5-flash",
+  "HistoryPath": "Flight-Plan-History.jsonl",
+  "Emoji": "🚀",
+  "Color": {
+    "Prompt": "Cyan",
+    "Info": "Gray",
+    "Error": "Red",
+    "Success": "Green"
+  }
+}
