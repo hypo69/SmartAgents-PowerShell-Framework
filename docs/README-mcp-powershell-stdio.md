@@ -701,13 +701,11 @@ Invoke-Pester -Path ".\tests\unit-tests.ps1" -TestName "Test-MCPRequest"
 
 ## 👥 Авторы и участники
 
-- **Основной разработчик** - Ваше имя (@yourusername)
-- **Участники** - См. список [contributors](https://github.com/your-repo/mcp-powershell-server/contributors)
+- **Основной разработчик** - @hypo69
+- **Участники** - См. список [contributors](https://github.com/hypo69/mcp-powershell-server/contributors)
 
 ## 🙏 Благодарности
 
-- [Anthropic](https://www.anthropic.com/) за создание Model Context Protocol
-- Сообществу PowerShell за отличную платформу для автоматизации
 - Всем участникам проекта за вклад в развитие
 
 ---
