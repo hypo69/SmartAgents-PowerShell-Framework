@@ -1,0 +1,11 @@
+{
+	"Model": "gemini-2.5-flash",
+	"Emoji": "🔍",
+	"HistoryPath": "Find-Spec-History.jsonl",
+	"Color": {
+		"Prompt": "Cyan",
+		"Info": "White",
+		"Error": "Red",
+		"Success": "Green"
+	}
+}

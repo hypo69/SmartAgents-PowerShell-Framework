@@ -1,3 +1,8 @@
+# Update.
+mcp сервер переехал в собственный репозиторий: https://github.com/hypo69/mcp-powershell-server
+
+
+
 # SmartAgents Framework
 
 Модульная система для создания специализированных AI-агентов на PowerShell с использованием Google Gemini API и поддержкой MCP (Model Context Protocol).
